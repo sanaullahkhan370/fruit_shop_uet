@@ -114,8 +114,6 @@ class _AdminScreenState extends State<AdminScreen> {
     final name = TextEditingController(text: shop['name']?.toString() ?? '');
     final category = TextEditingController(text: shop['category']?.toString() ?? '');
     final description = TextEditingController(text: shop['description']?.toString() ?? '');
-    final imageUrl = TextEditingController(text: shop['imageUrl']?.toString() ?? '');
-    final backgroundImageUrl = TextEditingController(text: shop['backgroundImageUrl']?.toString() ?? '');
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -127,10 +125,6 @@ class _AdminScreenState extends State<AdminScreen> {
             TextField(controller: category, decoration: const InputDecoration(labelText: 'Category')),
             const SizedBox(height: 10),
             TextField(controller: description, maxLines: 3, decoration: const InputDecoration(labelText: 'Description')),
-            const SizedBox(height: 10),
-            TextField(controller: imageUrl, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Shop picture URL (optional)', helperText: 'Empty = shop icon')),
-            const SizedBox(height: 10),
-            TextField(controller: backgroundImageUrl, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Background image URL (optional)', helperText: 'Empty = default blue background')),
           ]),
         ),
         actions: [
@@ -145,8 +139,6 @@ class _AdminScreenState extends State<AdminScreen> {
           'name': name.text.trim(),
           'category': category.text.trim(),
           'description': description.text.trim(),
-          'imageUrl': imageUrl.text.trim(),
-          'backgroundImageUrl': backgroundImageUrl.text.trim(),
         });
         await load();
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Shop updated')));
