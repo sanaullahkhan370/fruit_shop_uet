@@ -47,20 +47,46 @@ class _UetShopsAppState extends State<UetShopsApp> {
 
   @override
   Widget build(BuildContext context) {
-    const green = Color(0xFF176B3A);
+    const darkBlue = Color(0xFF0A2E5D);
+    const backgroundBlue = Color(0xFFF2F6FC);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'UET Shops',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: green),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: darkBlue,
+          primary: darkBlue,
+          brightness: Brightness.light,
+        ),
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF6F8F6),
+        scaffoldBackgroundColor: backgroundBlue,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: darkBlue,
+          foregroundColor: Colors.white,
+          centerTitle: true,
+        ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
+          prefixIconColor: darkBlue,
+          suffixIconColor: darkBlue,
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: darkBlue, width: 2),
+          ),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
         ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: darkBlue,
+            foregroundColor: Colors.white,
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(foregroundColor: darkBlue),
+        ),
         cardTheme: CardThemeData(
+          color: const Color(0xFFF8FAFD),
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         ),
