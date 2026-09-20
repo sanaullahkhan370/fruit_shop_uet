@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../core/api_service.dart';
 
 class AdminScreen extends StatefulWidget {
@@ -558,12 +559,35 @@ class _AdminScreenState extends State<AdminScreen> {
     }),
   ]);
 
+  Future<void> openDeliveryLocation(dynamic latitude, dynamic longitude) async {
+    final lat = latitude is num ? latitude.toDouble() : double.tryParse(latitude?.toString() ?? '');
+    final lng = longitude is num ? longitude.toDouble() : double.tryParse(longitude?.toString() ?? '');
+    if (lat == null || lng == null) return;
+    final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open delivery location')),
+      );
+    }
+  }
+
   Widget orderPage() => ListView(padding: const EdgeInsets.all(16), children: orders.map((raw) {
     final o = Map<String, dynamic>.from(raw);
     final next = nextStatus(o['status']);
     return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('${o['orderNumber']} • ${o['customerName']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-      Text('${o['phone']}\n${o['deliveryLocation']}'),
+      Text('${o['phone']}'),
+      if (o['latitude'] != null && o['longitude'] != null)
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => openDeliveryLocation(o['latitude'], o['longitude']),
+            icon: const Icon(Icons.location_on_outlined),
+            label: const Text('Open delivery location'),
+          ),
+        )
+      else
+        Text(o['deliveryLocation']?.toString() ?? 'Location unavailable'),
       const SizedBox(height: 8),
       ...List<dynamic>.from(o['items']).map((i) => Text('${i['quantity']} × ${i['name']}')),
       Text('Total: Rs. ${o['totalAmount']}'),
