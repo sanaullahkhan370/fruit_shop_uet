@@ -15,22 +15,28 @@ class _AdminScreenState extends State<AdminScreen> {
   List<dynamic> products = [];
   List<dynamic> orders = [];
   List<dynamic> shops = [];
+  Map<String, dynamic> currentUser = {};
   bool loading = true;
   String? error;
 
   bool get superAdmin => widget.user['role'] == 'superAdmin';
   String? get shopId {
-    final shop = widget.user['shop'];
+    final shop = (currentUser.isEmpty ? widget.user : currentUser)['shop'];
     if (shop is Map) return shop['_id'];
     return shop?.toString();
   }
 
   @override
-  void initState() { super.initState(); load(); }
+  void initState() {
+    super.initState();
+    currentUser = Map<String, dynamic>.from(widget.user);
+    load();
+  }
 
   Future<void> load() async {
     setState(() { loading = true; error = null; });
     try {
+      currentUser = await ApiService.me();
       shops = await ApiService.shops();
       orders = await ApiService.orders();
       if (!superAdmin && shopId != null) products = await ApiService.products(shopId!);
@@ -39,13 +45,15 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> addProduct() async {
-    final name = TextEditingController(), price = TextEditingController(), unit = TextEditingController(text: 'item'), description = TextEditingController();
+    final name = TextEditingController(), price = TextEditingController(), unit = TextEditingController(text: 'item'), description = TextEditingController(), imageUrl = TextEditingController();
     final ok = await showDialog<bool>(context: context, builder: (_) => AlertDialog(
       title: const Text('Add product/service'),
       content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
         TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
         const SizedBox(height: 10),
         TextField(controller: description, decoration: const InputDecoration(labelText: 'Description')),
+        const SizedBox(height: 10),
+        TextField(controller: imageUrl, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Item image URL (optional)', helperText: 'Leave empty to use placeholder')),
         const SizedBox(height: 10),
         TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Price')),
         const SizedBox(height: 10),
@@ -54,7 +62,7 @@ class _AdminScreenState extends State<AdminScreen> {
       actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Add'))],
     ));
     if (ok == true) {
-      await ApiService.addProduct({'name': name.text, 'description': description.text, 'price': double.tryParse(price.text) ?? 0, 'unit': unit.text});
+      await ApiService.addProduct({'name': name.text, 'description': description.text, 'imageUrl': imageUrl.text.trim(), 'price': double.tryParse(price.text) ?? 0, 'unit': unit.text});
       await load();
     }
   }
@@ -218,14 +226,129 @@ class _AdminScreenState extends State<AdminScreen> {
     if (ok == true) { await ApiService.createShopAdmin(shop['_id'], {'name': name.text, 'email': email.text, 'phone': phone.text, 'password': password.text}); await load(); }
   }
 
+  Widget imageOrPlaceholder(String? url, IconData icon, {double size = 56}) {
+    final value = url?.trim() ?? '';
+    if (value.isEmpty) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(12)),
+        child: Icon(icon, color: Theme.of(context).colorScheme.primary),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        value,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          width: size,
+          height: size,
+          color: Theme.of(context).colorScheme.primaryContainer,
+          child: Icon(icon, color: Theme.of(context).colorScheme.primary),
+        ),
+      ),
+    );
+  }
+
+  Future<void> customizeShop() async {
+    final shop = currentUser['shop'];
+    if (shop is! Map || shopId == null) return;
+    final background = TextEditingController(text: shop['backgroundImageUrl']?.toString() ?? '');
+    final profile = TextEditingController(text: currentUser['profileImageUrl']?.toString() ?? '');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Shop appearance'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(
+              controller: background,
+              keyboardType: TextInputType.url,
+              decoration: const InputDecoration(labelText: 'Background image URL (optional)', helperText: 'Empty = blue default background'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: profile,
+              keyboardType: TextInputType.url,
+              decoration: const InputDecoration(labelText: 'Admin picture URL (optional)', helperText: 'Empty = profile icon'),
+            ),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      try {
+        await ApiService.updateShop(shopId!, {'backgroundImageUrl': background.text.trim()});
+        currentUser = await ApiService.updateMe({'profileImageUrl': profile.text.trim()});
+        await load();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Shop appearance updated')));
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      }
+    }
+  }
+
+  Widget shopHeader() {
+    final shop = currentUser['shop'];
+    final data = shop is Map ? shop : <String, dynamic>{};
+    final background = data['backgroundImageUrl']?.toString().trim() ?? '';
+    final profile = currentUser['profileImageUrl']?.toString() ?? '';
+    return Container(
+      height: 150,
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        color: Theme.of(context).colorScheme.primary,
+        image: background.isEmpty
+            ? null
+            : DecorationImage(
+                image: NetworkImage(background),
+                fit: BoxFit.cover,
+                onError: (_, __) {},
+              ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: LinearGradient(
+            colors: [Colors.black.withValues(alpha: 0.62), Colors.black.withValues(alpha: 0.12)],
+            begin: Alignment.bottomLeft,
+            end: Alignment.topRight,
+          ),
+        ),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          ClipOval(child: imageOrPlaceholder(profile, Icons.person, size: 64)),
+          const SizedBox(width: 14),
+          Expanded(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(data['name']?.toString() ?? 'My Shop', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+            Text(currentUser['name']?.toString() ?? 'Shop Admin', style: const TextStyle(color: Colors.white70)),
+          ])),
+          IconButton.filledTonal(onPressed: customizeShop, tooltip: 'Change pictures', icon: const Icon(Icons.photo_camera_outlined)),
+        ]),
+      ),
+    );
+  }
+
   String? nextStatus(String status) => {'accepted': 'preparing', 'preparing': 'ready', 'ready': 'completed'}[status];
 
   Widget productPage() => ListView(padding: const EdgeInsets.all(16), children: [
+    shopHeader(),
+    OutlinedButton.icon(onPressed: customizeShop, icon: const Icon(Icons.image_outlined), label: const Text('Background & admin picture')),
+    const SizedBox(height: 10),
     FilledButton.icon(onPressed: addProduct, icon: const Icon(Icons.add), label: const Text('Add product/service')),
     const SizedBox(height: 12),
     ...products.map((raw) {
       final p = Map<String, dynamic>.from(raw);
       return Card(child: ListTile(
+        leading: imageOrPlaceholder(p['imageUrl']?.toString(), Icons.inventory_2_outlined),
         title: Text(p['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text('Rs. ${p['price']} / ${p['unit']}'),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
