@@ -140,6 +140,66 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
+  Future<void> editAdmin(Map<String, dynamic> shop) async {
+    try {
+      final admin = await ApiService.shopAdmin(shop['_id']);
+      if (!mounted) return;
+      final name = TextEditingController(text: admin['name']?.toString() ?? '');
+      final email = TextEditingController(text: admin['email']?.toString() ?? '');
+      final phone = TextEditingController(text: admin['phone']?.toString() ?? '');
+      final password = TextEditingController();
+      bool hidePassword = true;
+
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text('Admin account • ${shop['name']}'),
+            content: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                TextField(controller: name, decoration: const InputDecoration(labelText: 'Admin name')),
+                const SizedBox(height: 10),
+                TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Login email')),
+                const SizedBox(height: 10),
+                TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone')),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: password,
+                  obscureText: hidePassword,
+                  decoration: InputDecoration(
+                    labelText: 'New password (optional)',
+                    helperText: 'Leave empty to keep current password',
+                    suffixIcon: IconButton(
+                      onPressed: () => setDialogState(() => hidePassword = !hidePassword),
+                      icon: Icon(hidePassword ? Icons.visibility_off : Icons.visibility),
+                    ),
+                  ),
+                ),
+              ]),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+              FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Update Account')),
+            ],
+          ),
+        ),
+      );
+
+      if (ok == true) {
+        final body = <String, dynamic>{
+          'name': name.text.trim(),
+          'email': email.text.trim(),
+          'phone': phone.text.trim(),
+        };
+        if (password.text.isNotEmpty) body['password'] = password.text;
+        await ApiService.updateShopAdmin(shop['_id'], body);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Admin email/password updated')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+    }
+  }
+
   Future<void> addAdmin(Map<String, dynamic> shop) async {
     final name = TextEditingController(), email = TextEditingController(), phone = TextEditingController(), password = TextEditingController();
     final ok = await showDialog<bool>(context: context, builder: (_) => AlertDialog(
@@ -204,7 +264,14 @@ class _AdminScreenState extends State<AdminScreen> {
         title: Text(s['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(s['category']),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-          FilledButton.tonal(onPressed: () => addAdmin(s), child: const Text('Create Admin')),
+          if (s['owner'] == null)
+            FilledButton.tonal(onPressed: () => addAdmin(s), child: const Text('Create Admin'))
+          else
+            IconButton(
+              tooltip: 'Update admin email/password',
+              onPressed: () => editAdmin(s),
+              icon: const Icon(Icons.manage_accounts_outlined),
+            ),
           IconButton(
             tooltip: 'Update shop',
             onPressed: () => editShop(s),
