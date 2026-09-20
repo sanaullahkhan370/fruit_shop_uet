@@ -75,6 +75,71 @@ class _AdminScreenState extends State<AdminScreen> {
     if (ok == true) { await ApiService.createShop({'name': name.text, 'category': category.text, 'description': description.text}); await load(); }
   }
 
+  Future<void> editShop(Map<String, dynamic> shop) async {
+    final name = TextEditingController(text: shop['name']?.toString() ?? '');
+    final category = TextEditingController(text: shop['category']?.toString() ?? '');
+    final description = TextEditingController(text: shop['description']?.toString() ?? '');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Update shop'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: name, decoration: const InputDecoration(labelText: 'Shop name')),
+            const SizedBox(height: 10),
+            TextField(controller: category, decoration: const InputDecoration(labelText: 'Category')),
+            const SizedBox(height: 10),
+            TextField(controller: description, maxLines: 3, decoration: const InputDecoration(labelText: 'Description')),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Update')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      try {
+        await ApiService.updateShop(shop['_id'], {
+          'name': name.text.trim(),
+          'category': category.text.trim(),
+          'description': description.text.trim(),
+        });
+        await load();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Shop updated')));
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
+
+  Future<void> deleteShop(Map<String, dynamic> shop) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete shop?'),
+        content: Text('Are you sure you want to delete "${shop['name']}"? Existing order history will remain safe.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      try {
+        await ApiService.deleteShop(shop['_id']);
+        await load();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Shop deleted')));
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
+
   Future<void> addAdmin(Map<String, dynamic> shop) async {
     final name = TextEditingController(), email = TextEditingController(), phone = TextEditingController(), password = TextEditingController();
     final ok = await showDialog<bool>(context: context, builder: (_) => AlertDialog(
@@ -138,7 +203,19 @@ class _AdminScreenState extends State<AdminScreen> {
         leading: const CircleAvatar(child: Icon(Icons.store)),
         title: Text(s['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(s['category']),
-        trailing: FilledButton.tonal(onPressed: () => addAdmin(s), child: const Text('Create Admin')),
+        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+          FilledButton.tonal(onPressed: () => addAdmin(s), child: const Text('Create Admin')),
+          IconButton(
+            tooltip: 'Update shop',
+            onPressed: () => editShop(s),
+            icon: const Icon(Icons.edit_outlined),
+          ),
+          IconButton(
+            tooltip: 'Delete shop',
+            onPressed: () => deleteShop(s),
+            icon: const Icon(Icons.delete_outline, color: Colors.red),
+          ),
+        ]),
       ));
     }),
   ]);
