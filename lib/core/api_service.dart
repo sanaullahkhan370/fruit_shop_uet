@@ -83,6 +83,9 @@ class ApiService {
   static Future<void> deleteProduct(String id) async => _request('DELETE', '/products/$id');
   static Future<Map<String, dynamic>> createShop(Map<String, dynamic> body) async =>
       Map<String, dynamic>.from((await _request('POST', '/shops', body: body))['shop']);
+  static Future<void> updateShop(String id, Map<String, dynamic> body) async =>
+      _request('PATCH', '/shops/$id', body: body);
+  static Future<void> deleteShop(String id) async => _request('DELETE', '/shops/$id');
   static Future<void> createShopAdmin(String shopId, Map<String, dynamic> body) async =>
       _request('POST', '/shops/$shopId/admin', body: body);
   static Future<void> review(String orderId, int rating, String comment) async =>
