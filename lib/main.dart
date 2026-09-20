@@ -47,7 +47,7 @@ class _UetShopsAppState extends State<UetShopsApp> {
 
   @override
   Widget build(BuildContext context) {
-    const darkBlue = Color(0xFF0A2E5D);
+    const darkBlue = Color(0xFF424EF5);
     const backgroundBlue = Color(0xFFF2F6FC);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
