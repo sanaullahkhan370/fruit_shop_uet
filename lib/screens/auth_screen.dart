@@ -17,6 +17,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final code = TextEditingController();
   bool registerMode = false;
   bool otpMode = false;
+  bool obscurePassword = true;
   bool busy = false;
   String? error;
 
@@ -39,6 +40,16 @@ class _AuthScreenState extends State<AuthScreen> {
     } finally {
       if (mounted) setState(() => busy = false);
     }
+  }
+
+  @override
+  void dispose() {
+    name.dispose();
+    email.dispose();
+    phone.dispose();
+    password.dispose();
+    code.dispose();
+    super.dispose();
   }
 
   @override
@@ -72,7 +83,19 @@ class _AuthScreenState extends State<AuthScreen> {
                     if (otpMode)
                       TextField(controller: code, keyboardType: TextInputType.number, maxLength: 6, decoration: const InputDecoration(labelText: '6-digit verification code', prefixIcon: Icon(Icons.verified)))
                     else
-                      TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock))),
+                      TextField(
+                        controller: password,
+                        obscureText: obscurePassword,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          prefixIcon: const Icon(Icons.lock),
+                          suffixIcon: IconButton(
+                            tooltip: obscurePassword ? 'Show password' : 'Hide password',
+                            onPressed: () => setState(() => obscurePassword = !obscurePassword),
+                            icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility),
+                          ),
+                        ),
+                      ),
                     if (error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(error!, style: const TextStyle(color: Colors.red))),
                     const SizedBox(height: 18),
                     SizedBox(width: double.infinity, child: FilledButton(
