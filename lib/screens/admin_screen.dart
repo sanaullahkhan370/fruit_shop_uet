@@ -221,7 +221,7 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> addAdmin(Map<String, dynamic> shop) async {
-    final name = TextEditingController(), email = TextEditingController(), phone = TextEditingController(), password = TextEditingController();
+    final name = TextEditingController(), email = TextEditingController(), phone = TextEditingController(), profileImageUrl = TextEditingController(), password = TextEditingController();
     final ok = await showDialog<bool>(context: context, builder: (_) => AlertDialog(
       title: Text('Admin for ${shop['name']}'),
       content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -231,11 +231,13 @@ class _AdminScreenState extends State<AdminScreen> {
         const SizedBox(height: 10),
         TextField(controller: phone, decoration: const InputDecoration(labelText: 'Phone')),
         const SizedBox(height: 10),
+        TextField(controller: profileImageUrl, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Admin picture URL (optional)', helperText: 'Empty = profile icon')),
+        const SizedBox(height: 10),
         TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Password')),
       ])),
       actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Create Admin'))],
     ));
-    if (ok == true) { await ApiService.createShopAdmin(shop['_id'], {'name': name.text, 'email': email.text, 'phone': phone.text, 'password': password.text}); await load(); }
+    if (ok == true) { await ApiService.createShopAdmin(shop['_id'], {'name': name.text, 'email': email.text, 'phone': phone.text, 'profileImageUrl': profileImageUrl.text.trim(), 'password': password.text}); await load(); }
   }
 
   Future<void> editProduct(Map<String, dynamic> product, {bool refreshDashboard = true}) async {
@@ -276,51 +278,6 @@ class _AdminScreenState extends State<AdminScreen> {
         'unit': unit.text.trim(),
       });
       if (refreshDashboard) await load();
-    }
-  }
-
-  Future<void> manageShopProducts(Map<String, dynamic> shop) async {
-    try {
-      var items = await ApiService.products(shop['_id']);
-      if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) => StatefulBuilder(
-          builder: (context, setDialogState) => AlertDialog(
-            title: Text('Item pictures • ${shop['name']}'),
-            content: SizedBox(
-              width: 620,
-              height: 420,
-              child: items.isEmpty
-                  ? const Center(child: Text('No products added by this shop yet'))
-                  : ListView.separated(
-                      itemCount: items.length,
-                      separatorBuilder: (_, __) => const Divider(),
-                      itemBuilder: (_, index) {
-                        final item = Map<String, dynamic>.from(items[index]);
-                        return ListTile(
-                          leading: imageOrPlaceholder(item['imageUrl']?.toString(), Icons.inventory_2_outlined),
-                          title: Text(item['name']?.toString() ?? 'Item'),
-                          subtitle: Text('Rs. ${item['price']} / ${item['unit']}'),
-                          trailing: IconButton(
-                            tooltip: 'Update item and picture',
-                            icon: const Icon(Icons.edit_outlined),
-                            onPressed: () async {
-                              await editProduct(item, refreshDashboard: false);
-                              items = await ApiService.products(shop['_id']);
-                              setDialogState(() {});
-                            },
-                          ),
-                        );
-                      },
-                    ),
-            ),
-            actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close'))],
-          ),
-        ),
-      );
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
     }
   }
 
@@ -494,11 +451,6 @@ class _AdminScreenState extends State<AdminScreen> {
               onPressed: () => editAdmin(s),
               icon: const Icon(Icons.manage_accounts_outlined),
             ),
-          IconButton(
-            tooltip: 'Manage item pictures',
-            onPressed: () => manageShopProducts(s),
-            icon: const Icon(Icons.inventory_2_outlined),
-          ),
           IconButton(
             tooltip: 'Update shop and pictures',
             onPressed: () => editShop(s),
