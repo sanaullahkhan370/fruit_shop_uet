@@ -1,17 +1,15 @@
-# fruit_shop_uet
+# UET Shops
 
-A new Flutter project.
+Flutter application for customers, shop admins and the UET Shops super admin.
 
-## Getting Started
+## Run locally
 
-This project is a starting point for a Flutter application.
+Start the backend on port 5000, then run:
 
-A few resources to get you started if this is your first Flutter project:
+### Chrome
+`flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:5000/api`
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+### Android emulator
+`flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5000/api`
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+For production, replace the URL with the deployed HTTPS backend URL.
