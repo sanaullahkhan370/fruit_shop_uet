@@ -69,6 +69,10 @@ class ApiService {
     final data = await _request('GET', '/auth/me');
     return Map<String, dynamic>.from(data['user']);
   }
+  static Future<Map<String, dynamic>> updateMe(Map<String, dynamic> body) async {
+    final data = await _request('PATCH', '/auth/me', body: body);
+    return Map<String, dynamic>.from(data['user']);
+  }
   static Future<List<dynamic>> shops() async => (await _request('GET', '/shops'))['shops'];
   static Future<List<dynamic>> products(String shopId) async => (await _request('GET', '/products?shop=$shopId'))['products'];
   static Future<List<dynamic>> orders() async => (await _request('GET', '/orders/my'))['orders'];
