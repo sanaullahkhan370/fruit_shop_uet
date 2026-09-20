@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import '../core/api_service.dart';
 
 class ShopScreen extends StatefulWidget {
@@ -13,6 +14,7 @@ class ShopScreen extends StatefulWidget {
 class _ShopScreenState extends State<ShopScreen> {
   late Future<List<dynamic>> future;
   final Map<String, int> cart = {};
+  bool placingOrder = false;
 
   @override
   void initState() {
@@ -22,50 +24,59 @@ class _ShopScreenState extends State<ShopScreen> {
 
   int quantity(String id) => cart[id] ?? 0;
 
-  Future<void> checkout(List<dynamic> products) async {
-    final location = TextEditingController();
-    final notes = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    final approved = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Place order'),
-        content: Form(
-          key: formKey,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextFormField(
-              controller: location,
-              decoration: const InputDecoration(labelText: 'Delivery/Pickup location'),
-              validator: (value) => value == null || value.trim().isEmpty ? 'Location is required' : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: notes,
-              decoration: const InputDecoration(labelText: 'Notes'),
-              validator: (value) => value == null || value.trim().isEmpty ? 'Notes are required' : null,
-            ),
-          ]),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () { if (formKey.currentState!.validate()) Navigator.pop(context, true); }, child: const Text('Confirm')),
-        ],
-      ),
+  Future<Position> currentPosition() async {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      throw Exception('Please turn on location/GPS and try again');
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied) {
+      throw Exception('Location permission is required for delivery');
+    }
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception('Location permission is blocked. Enable it from app/browser settings');
+    }
+
+    return Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
-    if (approved != true) return;
+  }
+
+  Future<void> checkout(List<dynamic> products) async {
+    if (placingOrder) return;
+    setState(() => placingOrder = true);
     try {
+      final position = await currentPosition();
+      final latitude = position.latitude;
+      final longitude = position.longitude;
       await ApiService.placeOrder({
         'shop': widget.shop['_id'],
-        'items': products.where((p) => quantity(p['_id']) > 0).map((p) => {'product': p['_id'], 'quantity': quantity(p['_id'])}).toList(),
+        'items': products
+            .where((p) => quantity(p['_id']) > 0)
+            .map((p) => {'product': p['_id'], 'quantity': quantity(p['_id'])})
+            .toList(),
         'phone': widget.user['phone'],
-        'deliveryLocation': location.text.trim(),
-        'notes': notes.text.trim(),
+        'deliveryLocation': 'GPS location',
+        'latitude': latitude,
+        'longitude': longitude,
+        'notes': '',
       });
       if (!mounted) return;
       setState(cart.clear);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order placed successfully')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Order sent to shop admin successfully')),
+      );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => placingOrder = false);
     }
   }
 
@@ -110,8 +121,10 @@ class _ShopScreenState extends State<ShopScreen> {
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: FilledButton.icon(
-                onPressed: () => checkout(products),
-                icon: const Icon(Icons.shopping_cart_checkout),
+                onPressed: placingOrder ? null : () => checkout(products),
+                icon: placingOrder
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.shopping_cart_checkout),
                 label: Padding(padding: const EdgeInsets.all(14), child: Text('Order $count item(s) • Rs. ${total.toStringAsFixed(0)}')),
               ),
             ),
