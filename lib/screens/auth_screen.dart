@@ -65,7 +65,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Column(children: [
-                    ColorFiltered(\n                      colorFilter: const ColorFilter.mode(Color(0xFF0A2E5D), BlendMode.srcIn),\n                      child: Image.asset('assets/images/uet_shops_logo.png', height: 150, fit: BoxFit.contain),\n                    ),
+                    Image.asset('assets/images/uet_shops_logo.png', height: 150, fit: BoxFit.contain),
                     const SizedBox(height: 16),
                     Text('UET Shops', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
                     Text(otpMode ? 'Enter the code sent to your email' : registerMode ? 'Create your customer account' : 'Sign in to continue'),
