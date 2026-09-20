@@ -87,6 +87,8 @@ class _AdminScreenState extends State<AdminScreen> {
     final name = TextEditingController(text: shop['name']?.toString() ?? '');
     final category = TextEditingController(text: shop['category']?.toString() ?? '');
     final description = TextEditingController(text: shop['description']?.toString() ?? '');
+    final imageUrl = TextEditingController(text: shop['imageUrl']?.toString() ?? '');
+    final backgroundImageUrl = TextEditingController(text: shop['backgroundImageUrl']?.toString() ?? '');
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -98,6 +100,10 @@ class _AdminScreenState extends State<AdminScreen> {
             TextField(controller: category, decoration: const InputDecoration(labelText: 'Category')),
             const SizedBox(height: 10),
             TextField(controller: description, maxLines: 3, decoration: const InputDecoration(labelText: 'Description')),
+            const SizedBox(height: 10),
+            TextField(controller: imageUrl, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Shop picture URL (optional)', helperText: 'Empty = shop icon')),
+            const SizedBox(height: 10),
+            TextField(controller: backgroundImageUrl, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Background image URL (optional)', helperText: 'Empty = default blue background')),
           ]),
         ),
         actions: [
@@ -112,6 +118,8 @@ class _AdminScreenState extends State<AdminScreen> {
           'name': name.text.trim(),
           'category': category.text.trim(),
           'description': description.text.trim(),
+          'imageUrl': imageUrl.text.trim(),
+          'backgroundImageUrl': backgroundImageUrl.text.trim(),
         });
         await load();
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Shop updated')));
@@ -155,6 +163,7 @@ class _AdminScreenState extends State<AdminScreen> {
       final name = TextEditingController(text: admin['name']?.toString() ?? '');
       final email = TextEditingController(text: admin['email']?.toString() ?? '');
       final phone = TextEditingController(text: admin['phone']?.toString() ?? '');
+      final profileImageUrl = TextEditingController(text: admin['profileImageUrl']?.toString() ?? '');
       final password = TextEditingController();
       bool hidePassword = true;
 
@@ -170,6 +179,8 @@ class _AdminScreenState extends State<AdminScreen> {
                 TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Login email')),
                 const SizedBox(height: 10),
                 TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone')),
+                const SizedBox(height: 10),
+                TextField(controller: profileImageUrl, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Admin picture URL (optional)', helperText: 'Empty = profile icon')),
                 const SizedBox(height: 10),
                 TextField(
                   controller: password,
@@ -198,6 +209,7 @@ class _AdminScreenState extends State<AdminScreen> {
           'name': name.text.trim(),
           'email': email.text.trim(),
           'phone': phone.text.trim(),
+          'profileImageUrl': profileImageUrl.text.trim(),
         };
         if (password.text.isNotEmpty) body['password'] = password.text;
         await ApiService.updateShopAdmin(shop['_id'], body);
@@ -224,6 +236,92 @@ class _AdminScreenState extends State<AdminScreen> {
       actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Create Admin'))],
     ));
     if (ok == true) { await ApiService.createShopAdmin(shop['_id'], {'name': name.text, 'email': email.text, 'phone': phone.text, 'password': password.text}); await load(); }
+  }
+
+  Future<void> editProduct(Map<String, dynamic> product, {bool refreshDashboard = true}) async {
+    final name = TextEditingController(text: product['name']?.toString() ?? '');
+    final description = TextEditingController(text: product['description']?.toString() ?? '');
+    final imageUrl = TextEditingController(text: product['imageUrl']?.toString() ?? '');
+    final price = TextEditingController(text: product['price']?.toString() ?? '');
+    final unit = TextEditingController(text: product['unit']?.toString() ?? 'item');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Update product/service'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+            const SizedBox(height: 10),
+            TextField(controller: description, decoration: const InputDecoration(labelText: 'Description')),
+            const SizedBox(height: 10),
+            TextField(controller: imageUrl, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Item image URL (optional)', helperText: 'Empty = item placeholder')),
+            const SizedBox(height: 10),
+            TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Price')),
+            const SizedBox(height: 10),
+            TextField(controller: unit, decoration: const InputDecoration(labelText: 'Unit')),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Update')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await ApiService.updateProduct(product['_id'], {
+        'name': name.text.trim(),
+        'description': description.text.trim(),
+        'imageUrl': imageUrl.text.trim(),
+        'price': double.tryParse(price.text) ?? 0,
+        'unit': unit.text.trim(),
+      });
+      if (refreshDashboard) await load();
+    }
+  }
+
+  Future<void> manageShopProducts(Map<String, dynamic> shop) async {
+    try {
+      var items = await ApiService.products(shop['_id']);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text('Item pictures • ${shop['name']}'),
+            content: SizedBox(
+              width: 620,
+              height: 420,
+              child: items.isEmpty
+                  ? const Center(child: Text('No products added by this shop yet'))
+                  : ListView.separated(
+                      itemCount: items.length,
+                      separatorBuilder: (_, __) => const Divider(),
+                      itemBuilder: (_, index) {
+                        final item = Map<String, dynamic>.from(items[index]);
+                        return ListTile(
+                          leading: imageOrPlaceholder(item['imageUrl']?.toString(), Icons.inventory_2_outlined),
+                          title: Text(item['name']?.toString() ?? 'Item'),
+                          subtitle: Text('Rs. ${item['price']} / ${item['unit']}'),
+                          trailing: IconButton(
+                            tooltip: 'Update item and picture',
+                            icon: const Icon(Icons.edit_outlined),
+                            onPressed: () async {
+                              await editProduct(item, refreshDashboard: false);
+                              items = await ApiService.products(shop['_id']);
+                              setDialogState(() {});
+                            },
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close'))],
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+    }
   }
 
   Widget imageOrPlaceholder(String? url, IconData icon, {double size = 56}) {
@@ -352,6 +450,7 @@ class _AdminScreenState extends State<AdminScreen> {
         title: Text(p['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text('Rs. ${p['price']} / ${p['unit']}'),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+          IconButton(tooltip: 'Update item and picture', onPressed: () => editProduct(p), icon: const Icon(Icons.edit_outlined)),
           Switch(value: p['isAvailable'] == true, onChanged: (v) async { await ApiService.updateProduct(p['_id'], {'isAvailable': v}); await load(); }),
           IconButton(onPressed: () async { await ApiService.deleteProduct(p['_id']); await load(); }, icon: const Icon(Icons.delete_outline, color: Colors.red)),
         ]),
@@ -383,7 +482,7 @@ class _AdminScreenState extends State<AdminScreen> {
     ...shops.map((raw) {
       final s = Map<String, dynamic>.from(raw);
       return Card(child: ListTile(
-        leading: const CircleAvatar(child: Icon(Icons.store)),
+        leading: imageOrPlaceholder(s['imageUrl']?.toString(), Icons.store),
         title: Text(s['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(s['category']),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -396,7 +495,12 @@ class _AdminScreenState extends State<AdminScreen> {
               icon: const Icon(Icons.manage_accounts_outlined),
             ),
           IconButton(
-            tooltip: 'Update shop',
+            tooltip: 'Manage item pictures',
+            onPressed: () => manageShopProducts(s),
+            icon: const Icon(Icons.inventory_2_outlined),
+          ),
+          IconButton(
+            tooltip: 'Update shop and pictures',
             onPressed: () => editShop(s),
             icon: const Icon(Icons.edit_outlined),
           ),
