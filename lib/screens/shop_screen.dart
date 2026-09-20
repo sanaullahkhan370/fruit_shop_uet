@@ -25,22 +25,34 @@ class _ShopScreenState extends State<ShopScreen> {
   Future<void> checkout(List<dynamic> products) async {
     final location = TextEditingController();
     final notes = TextEditingController();
+    final formKey = GlobalKey<FormState>();
     final approved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Place order'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: location, decoration: const InputDecoration(labelText: 'Delivery/Pickup location')),
-          const SizedBox(height: 12),
-          TextField(controller: notes, decoration: const InputDecoration(labelText: 'Notes (optional)')),
-        ]),
+        content: Form(
+          key: formKey,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextFormField(
+              controller: location,
+              decoration: const InputDecoration(labelText: 'Delivery/Pickup location'),
+              validator: (value) => value == null || value.trim().isEmpty ? 'Location is required' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: notes,
+              decoration: const InputDecoration(labelText: 'Notes'),
+              validator: (value) => value == null || value.trim().isEmpty ? 'Notes are required' : null,
+            ),
+          ]),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Confirm')),
+          FilledButton(onPressed: () { if (formKey.currentState!.validate()) Navigator.pop(context, true); }, child: const Text('Confirm')),
         ],
       ),
     );
-    if (approved != true || location.text.trim().isEmpty) return;
+    if (approved != true) return;
     try {
       await ApiService.placeOrder({
         'shop': widget.shop['_id'],
