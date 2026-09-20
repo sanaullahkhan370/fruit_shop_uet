@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../core/api_service.dart';
 
 class AdminScreen extends StatefulWidget {
@@ -45,24 +47,49 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> addProduct() async {
-    final name = TextEditingController(), price = TextEditingController(), unit = TextEditingController(text: 'item'), description = TextEditingController(), imageUrl = TextEditingController();
-    final ok = await showDialog<bool>(context: context, builder: (_) => AlertDialog(
-      title: const Text('Add product/service'),
-      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
-        const SizedBox(height: 10),
-        TextField(controller: description, decoration: const InputDecoration(labelText: 'Description')),
-        const SizedBox(height: 10),
-        TextField(controller: imageUrl, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Item image URL (optional)', helperText: 'Leave empty to use placeholder')),
-        const SizedBox(height: 10),
-        TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Price')),
-        const SizedBox(height: 10),
-        TextField(controller: unit, decoration: const InputDecoration(labelText: 'Unit (item, kg, service)')),
-      ])),
-      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Add'))],
-    ));
+    final name = TextEditingController();
+    final price = TextEditingController();
+    final unit = TextEditingController(text: 'item');
+    final description = TextEditingController();
+    String imageData = '';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add product/service'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+              const SizedBox(height: 10),
+              TextField(controller: description, decoration: const InputDecoration(labelText: 'Description')),
+              const SizedBox(height: 10),
+              imagePickerField(
+                label: 'Item picture (optional)',
+                value: imageData,
+                icon: Icons.inventory_2_outlined,
+                onChanged: (value) => setDialogState(() => imageData = value),
+              ),
+              const SizedBox(height: 10),
+              TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Price')),
+              const SizedBox(height: 10),
+              TextField(controller: unit, decoration: const InputDecoration(labelText: 'Unit (item, kg, service)')),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Add')),
+          ],
+        ),
+      ),
+    );
     if (ok == true) {
-      await ApiService.addProduct({'name': name.text, 'description': description.text, 'imageUrl': imageUrl.text.trim(), 'price': double.tryParse(price.text) ?? 0, 'unit': unit.text});
+      await ApiService.addProduct({
+        'name': name.text,
+        'description': description.text,
+        'imageUrl': imageData,
+        'price': double.tryParse(price.text) ?? 0,
+        'unit': unit.text,
+      });
       await load();
     }
   }
@@ -163,8 +190,8 @@ class _AdminScreenState extends State<AdminScreen> {
       final name = TextEditingController(text: admin['name']?.toString() ?? '');
       final email = TextEditingController(text: admin['email']?.toString() ?? '');
       final phone = TextEditingController(text: admin['phone']?.toString() ?? '');
-      final profileImageUrl = TextEditingController(text: admin['profileImageUrl']?.toString() ?? '');
       final password = TextEditingController();
+      String profileImage = admin['profileImageUrl']?.toString() ?? '';
       bool hidePassword = true;
 
       final ok = await showDialog<bool>(
@@ -174,13 +201,18 @@ class _AdminScreenState extends State<AdminScreen> {
             title: Text('Admin account • ${shop['name']}'),
             content: SingleChildScrollView(
               child: Column(mainAxisSize: MainAxisSize.min, children: [
+                imagePickerField(
+                  label: 'Admin picture (optional)',
+                  value: profileImage,
+                  icon: Icons.person,
+                  onChanged: (value) => setDialogState(() => profileImage = value),
+                ),
+                const SizedBox(height: 10),
                 TextField(controller: name, decoration: const InputDecoration(labelText: 'Admin name')),
                 const SizedBox(height: 10),
                 TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Login email')),
                 const SizedBox(height: 10),
                 TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone')),
-                const SizedBox(height: 10),
-                TextField(controller: profileImageUrl, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Admin picture URL (optional)', helperText: 'Empty = profile icon')),
                 const SizedBox(height: 10),
                 TextField(
                   controller: password,
@@ -209,11 +241,11 @@ class _AdminScreenState extends State<AdminScreen> {
           'name': name.text.trim(),
           'email': email.text.trim(),
           'phone': phone.text.trim(),
-          'profileImageUrl': profileImageUrl.text.trim(),
+          'profileImageUrl': profileImage,
         };
         if (password.text.isNotEmpty) body['password'] = password.text;
         await ApiService.updateShopAdmin(shop['_id'], body);
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Admin email/password updated')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Admin account updated')));
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
@@ -221,59 +253,94 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> addAdmin(Map<String, dynamic> shop) async {
-    final name = TextEditingController(), email = TextEditingController(), phone = TextEditingController(), profileImageUrl = TextEditingController(), password = TextEditingController();
-    final ok = await showDialog<bool>(context: context, builder: (_) => AlertDialog(
-      title: Text('Admin for ${shop['name']}'),
-      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: name, decoration: const InputDecoration(labelText: 'Admin name')),
-        const SizedBox(height: 10),
-        TextField(controller: email, decoration: const InputDecoration(labelText: 'Email')),
-        const SizedBox(height: 10),
-        TextField(controller: phone, decoration: const InputDecoration(labelText: 'Phone')),
-        const SizedBox(height: 10),
-        TextField(controller: profileImageUrl, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Admin picture URL (optional)', helperText: 'Empty = profile icon')),
-        const SizedBox(height: 10),
-        TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Password')),
-      ])),
-      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Create Admin'))],
-    ));
-    if (ok == true) { await ApiService.createShopAdmin(shop['_id'], {'name': name.text, 'email': email.text, 'phone': phone.text, 'profileImageUrl': profileImageUrl.text.trim(), 'password': password.text}); await load(); }
+    final name = TextEditingController();
+    final email = TextEditingController();
+    final phone = TextEditingController();
+    final password = TextEditingController();
+    String profileImage = '';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Admin for ${shop['name']}'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              imagePickerField(
+                label: 'Admin picture (optional)',
+                value: profileImage,
+                icon: Icons.person,
+                onChanged: (value) => setDialogState(() => profileImage = value),
+              ),
+              const SizedBox(height: 10),
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Admin name')),
+              const SizedBox(height: 10),
+              TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email')),
+              const SizedBox(height: 10),
+              TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone')),
+              const SizedBox(height: 10),
+              TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Password')),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Create Admin')),
+          ],
+        ),
+      ),
+    );
+    if (ok == true) {
+      await ApiService.createShopAdmin(shop['_id'], {
+        'name': name.text,
+        'email': email.text,
+        'phone': phone.text,
+        'profileImageUrl': profileImage,
+        'password': password.text,
+      });
+      await load();
+    }
   }
 
   Future<void> editProduct(Map<String, dynamic> product, {bool refreshDashboard = true}) async {
     final name = TextEditingController(text: product['name']?.toString() ?? '');
     final description = TextEditingController(text: product['description']?.toString() ?? '');
-    final imageUrl = TextEditingController(text: product['imageUrl']?.toString() ?? '');
     final price = TextEditingController(text: product['price']?.toString() ?? '');
     final unit = TextEditingController(text: product['unit']?.toString() ?? 'item');
+    String imageData = product['imageUrl']?.toString() ?? '';
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Update product/service'),
-        content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
-            const SizedBox(height: 10),
-            TextField(controller: description, decoration: const InputDecoration(labelText: 'Description')),
-            const SizedBox(height: 10),
-            TextField(controller: imageUrl, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Item image URL (optional)', helperText: 'Empty = item placeholder')),
-            const SizedBox(height: 10),
-            TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Price')),
-            const SizedBox(height: 10),
-            TextField(controller: unit, decoration: const InputDecoration(labelText: 'Unit')),
-          ]),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Update product/service'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              imagePickerField(
+                label: 'Item picture (optional)',
+                value: imageData,
+                icon: Icons.inventory_2_outlined,
+                onChanged: (value) => setDialogState(() => imageData = value),
+              ),
+              const SizedBox(height: 10),
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+              const SizedBox(height: 10),
+              TextField(controller: description, decoration: const InputDecoration(labelText: 'Description')),
+              const SizedBox(height: 10),
+              TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Price')),
+              const SizedBox(height: 10),
+              TextField(controller: unit, decoration: const InputDecoration(labelText: 'Unit')),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Update')),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Update')),
-        ],
       ),
     );
     if (ok == true) {
       await ApiService.updateProduct(product['_id'], {
         'name': name.text.trim(),
         'description': description.text.trim(),
-        'imageUrl': imageUrl.text.trim(),
+        'imageUrl': imageData,
         'price': double.tryParse(price.text) ?? 0,
         'unit': unit.text.trim(),
       });
@@ -281,9 +348,88 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
+  Future<String?> pickImageAction(String current) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Wrap(children: [
+          ListTile(
+            leading: const Icon(Icons.photo_library_outlined),
+            title: const Text('Choose from gallery'),
+            onTap: () => Navigator.pop(sheetContext, 'gallery'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.camera_alt_outlined),
+            title: const Text('Take a photo'),
+            onTap: () => Navigator.pop(sheetContext, 'camera'),
+          ),
+          if (current.isNotEmpty)
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Remove picture'),
+              onTap: () => Navigator.pop(sheetContext, 'remove'),
+            ),
+        ]),
+      ),
+    );
+    if (action == null) return null;
+    if (action == 'remove') return '';
+    final source = action == 'camera' ? ImageSource.camera : ImageSource.gallery;
+    final file = await ImagePicker().pickImage(
+      source: source,
+      maxWidth: 1000,
+      maxHeight: 1000,
+      imageQuality: 65,
+    );
+    if (file == null) return null;
+    final bytes = await file.readAsBytes();
+    if (bytes.length > 1400000) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Picture is too large. Please choose a smaller picture.')));
+      return null;
+    }
+    final mime = file.name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+    return 'data:$mime;base64,${base64Encode(bytes)}';
+  }
+
+  Widget imagePickerField({
+    required String label,
+    required String value,
+    required IconData icon,
+    required ValueChanged<String> onChanged,
+  }) {
+    return Row(children: [
+      imageOrPlaceholder(value, icon, size: 72),
+      const SizedBox(width: 12),
+      Expanded(
+        child: OutlinedButton.icon(
+          onPressed: () async {
+            final selected = await pickImageAction(value);
+            if (selected != null) onChanged(selected);
+          },
+          icon: const Icon(Icons.add_a_photo_outlined),
+          label: Text(value.isEmpty ? label : 'Change picture'),
+        ),
+      ),
+    ]);
+  }
+
+  ImageProvider? imageProviderFor(String? value) {
+    final source = value?.trim() ?? '';
+    if (source.isEmpty) return null;
+    if (source.startsWith('data:image')) {
+      try {
+        return MemoryImage(base64Decode(source.split(',').last));
+      } catch (_) {
+        return null;
+      }
+    }
+    return NetworkImage(source);
+  }
+
   Widget imageOrPlaceholder(String? url, IconData icon, {double size = 56}) {
     final value = url?.trim() ?? '';
-    if (value.isEmpty) {
+    final provider = imageProviderFor(value);
+    if (provider == null) {
       return Container(
         width: size,
         height: size,
@@ -293,8 +439,8 @@ class _AdminScreenState extends State<AdminScreen> {
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: Image.network(
-        value,
+      child: Image(
+        image: provider,
         width: size,
         height: size,
         fit: BoxFit.cover,
@@ -311,37 +457,41 @@ class _AdminScreenState extends State<AdminScreen> {
   Future<void> customizeShop() async {
     final shop = currentUser['shop'];
     if (shop is! Map || shopId == null) return;
-    final background = TextEditingController(text: shop['backgroundImageUrl']?.toString() ?? '');
-    final profile = TextEditingController(text: currentUser['profileImageUrl']?.toString() ?? '');
+    String background = shop['backgroundImageUrl']?.toString() ?? '';
+    String profile = currentUser['profileImageUrl']?.toString() ?? '';
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Shop appearance'),
-        content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(
-              controller: background,
-              keyboardType: TextInputType.url,
-              decoration: const InputDecoration(labelText: 'Background image URL (optional)', helperText: 'Empty = blue default background'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: profile,
-              keyboardType: TextInputType.url,
-              decoration: const InputDecoration(labelText: 'Admin picture URL (optional)', helperText: 'Empty = profile icon'),
-            ),
-          ]),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Shop appearance'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              imagePickerField(
+                label: 'Background picture (optional)',
+                value: background,
+                icon: Icons.storefront,
+                onChanged: (value) => setDialogState(() => background = value),
+              ),
+              const SizedBox(height: 16),
+              imagePickerField(
+                label: 'Admin picture (optional)',
+                value: profile,
+                icon: Icons.person,
+                onChanged: (value) => setDialogState(() => profile = value),
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Save')),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save')),
-        ],
       ),
     );
     if (ok == true) {
       try {
-        await ApiService.updateShop(shopId!, {'backgroundImageUrl': background.text.trim()});
-        currentUser = await ApiService.updateMe({'profileImageUrl': profile.text.trim()});
+        await ApiService.updateShop(shopId!, {'backgroundImageUrl': background});
+        currentUser = await ApiService.updateMe({'profileImageUrl': profile});
         await load();
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Shop appearance updated')));
       } catch (e) {
@@ -355,16 +505,17 @@ class _AdminScreenState extends State<AdminScreen> {
     final data = shop is Map ? shop : <String, dynamic>{};
     final background = data['backgroundImageUrl']?.toString().trim() ?? '';
     final profile = currentUser['profileImageUrl']?.toString() ?? '';
+    final backgroundProvider = imageProviderFor(background);
     return Container(
       height: 150,
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
         color: Theme.of(context).colorScheme.primary,
-        image: background.isEmpty
+        image: backgroundProvider == null
             ? null
             : DecorationImage(
-                image: NetworkImage(background),
+                image: backgroundProvider,
                 fit: BoxFit.cover,
                 onError: (_, __) {},
               ),
