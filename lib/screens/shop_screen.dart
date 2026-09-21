@@ -288,46 +288,60 @@ class _ShopScreenState extends State<ShopScreen> {
   Widget quantityControl(String id) {
     final qty = quantity(id);
     return Container(
-      height: 39,
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
-        color: qty > 0
-            ? const Color(0xFF424EF5)
-            : const Color(0xFFE8EBFF),
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFFE8EBFF),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFCCD2FF)),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (qty > 0)
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            onPressed: () => setState(() {
-              if (qty == 1) {
-                cart.remove(id);
-              } else {
-                cart[id] = qty - 1;
-              }
-            }),
-            icon: const Icon(
+        SizedBox(
+          width: 34,
+          height: 34,
+          child: IconButton(
+            padding: EdgeInsets.zero,
+            tooltip: 'Decrease quantity',
+            onPressed: qty == 0
+                ? null
+                : () => setState(() {
+                    if (qty == 1) {
+                      cart.remove(id);
+                    } else {
+                      cart[id] = qty - 1;
+                    }
+                  }),
+            icon: Icon(
               Icons.remove_rounded,
-              size: 18,
-              color: Colors.white,
+              size: 20,
+              color: qty == 0 ? Colors.grey.shade400 : const Color(0xFF424EF5),
             ),
           ),
-        if (qty > 0)
-          Text(
+        ),
+        Container(
+          constraints: const BoxConstraints(minWidth: 30),
+          alignment: Alignment.center,
+          child: Text(
             '$qty',
             style: const TextStyle(
-              color: Colors.white,
+              color: Color(0xFF17216A),
+              fontSize: 16,
               fontWeight: FontWeight.w900,
             ),
           ),
-        IconButton(
-          visualDensity: VisualDensity.compact,
-          tooltip: 'Add item',
-          onPressed: () => setState(() => cart[id] = qty + 1),
-          icon: Icon(
-            qty > 0 ? Icons.add_rounded : Icons.add_shopping_cart_rounded,
-            size: 19,
-            color: qty > 0 ? Colors.white : const Color(0xFF424EF5),
+        ),
+        SizedBox(
+          width: 34,
+          height: 34,
+          child: IconButton(
+            padding: EdgeInsets.zero,
+            tooltip: 'Increase quantity',
+            onPressed: () => setState(() => cart[id] = qty + 1),
+            icon: const Icon(
+              Icons.add_rounded,
+              size: 20,
+              color: Color(0xFF424EF5),
+            ),
           ),
         ),
       ]),
