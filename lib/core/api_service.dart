@@ -60,6 +60,14 @@ class ApiService {
     await saveSession(data);
     return Map<String, dynamic>.from(data['user']);
   }
+  static Future<void> forgotPassword(String email) async =>
+      _request('POST', '/auth/forgot-password', body: {'email': email});
+  static Future<void> resetPassword(String email, String code, String password) async =>
+      _request('POST', '/auth/reset-password', body: {
+        'email': email,
+        'code': code,
+        'password': password,
+      });
   static Future<Map<String, dynamic>> login(String email, String password) async {
     final data = await _request('POST', '/auth/login', body: {'email': email, 'password': password});
     await saveSession(data);
