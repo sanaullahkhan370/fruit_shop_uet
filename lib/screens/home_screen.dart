@@ -339,6 +339,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 return value.contains(search);
               })
               .toList();
+          final openCount =
+              shops.where((shop) => shop['isOpen'] == true).length;
 
           return RefreshIndicator(
             onRefresh: refresh,
@@ -366,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       Text(
-                        '${shops.length} available',
+                        '$openCount available',
                         style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600),
                       ),
                     ]),
