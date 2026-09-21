@@ -541,7 +541,7 @@ class _ShopScreenState extends State<ShopScreen> {
             ),
           ),
           FilledButton.icon(
-            onPressed: placingOrder ? null : () => checkout(products),
+            onPressed: placingOrder || count == 0 ? null : () => checkout(products),
             style: FilledButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: const Color(0xFF2837D8),
@@ -556,7 +556,11 @@ class _ShopScreenState extends State<ShopScreen> {
                   )
                 : const Icon(Icons.near_me_rounded),
             label: Text(
-              placingOrder ? 'Locating...' : 'Place Order',
+              placingOrder
+                  ? 'Locating...'
+                  : count == 0
+                      ? 'Add Items'
+                      : 'Place Order',
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
           ),
@@ -635,7 +639,7 @@ class _ShopScreenState extends State<ShopScreen> {
                       20,
                       4,
                       20,
-                      count > 0 ? 105 : 30,
+                      105,
                     ),
                     sliver: SliverGrid(
                       gridDelegate:
@@ -656,8 +660,7 @@ class _ShopScreenState extends State<ShopScreen> {
               ],
             ),
           ),
-          bottomNavigationBar:
-              count == 0 ? null : cartBar(products, count, total),
+          bottomNavigationBar: cartBar(products, count, total),
         );
       },
     );
