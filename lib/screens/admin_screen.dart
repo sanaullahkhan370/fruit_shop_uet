@@ -20,6 +20,7 @@ class _AdminScreenState extends State<AdminScreen> {
   List<dynamic> shops = [];
   Map<String, dynamic> currentUser = {};
   bool loading = true;
+  bool togglingShop = false;
   String? error;
 
   bool get superAdmin => widget.user['role'] == 'superAdmin';
@@ -538,8 +539,92 @@ class _AdminScreenState extends State<AdminScreen> {
 
   String? nextStatus(String status) => {'accepted': 'preparing', 'preparing': 'ready', 'ready': 'completed'}[status];
 
+  Future<void> toggleShopOpen(bool value) async {
+    if (shopId == null || togglingShop) return;
+    setState(() => togglingShop = true);
+    try {
+      await ApiService.updateShop(shopId!, {'isOpen': value});
+      currentUser = await ApiService.me();
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(value ? 'Shop is now OPEN' : 'Shop is now CLOSED')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => togglingShop = false);
+    }
+  }
+
+  Widget shopStatusControl() {
+    final shop = currentUser['shop'];
+    final data = shop is Map ? shop : <String, dynamic>{};
+    final isOpen = data['isOpen'] == true;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isOpen ? const Color(0xFFE7FFF4) : const Color(0xFFFFECEC),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isOpen ? const Color(0xFF73D9AD) : const Color(0xFFFFAAAA),
+        ),
+      ),
+      child: Row(children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: isOpen ? const Color(0xFF0A8F5C) : const Color(0xFFC63838),
+            borderRadius: BorderRadius.circular(13),
+          ),
+          child: Icon(
+            isOpen ? Icons.storefront_rounded : Icons.storefront_outlined,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(
+              isOpen ? 'Shop is Open' : 'Shop is Closed',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            ),
+            Text(
+              isOpen
+                  ? 'Customers can view items and place orders'
+                  : 'Customers cannot place orders',
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+            ),
+          ]),
+        ),
+        if (togglingShop)
+          const Padding(
+            padding: EdgeInsets.all(10),
+            child: SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          )
+        else
+          Switch(
+            value: isOpen,
+            onChanged: toggleShopOpen,
+          ),
+      ]),
+    );
+  }
+
   Widget productPage() => ListView(padding: const EdgeInsets.all(16), children: [
     shopHeader(),
+    shopStatusControl(),
+    const SizedBox(height: 10),
     OutlinedButton.icon(onPressed: customizeShop, icon: const Icon(Icons.image_outlined), label: const Text('Background & admin picture')),
     const SizedBox(height: 10),
     FilledButton.icon(onPressed: addProduct, icon: const Icon(Icons.add), label: const Text('Add product/service')),
