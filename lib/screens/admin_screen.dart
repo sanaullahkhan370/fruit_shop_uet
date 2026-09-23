@@ -722,10 +722,30 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget build(BuildContext context) {
     final pages = superAdmin ? [shopsPage(), orderPage()] : [productPage(), orderPage()];
     return Scaffold(
-      appBar: AppBar(title: Text(superAdmin ? 'UET Shops • Super Admin' : 'Shop Admin Dashboard'), actions: [
-        IconButton(onPressed: load, icon: const Icon(Icons.refresh)),
-        IconButton(onPressed: widget.onLogout, icon: const Icon(Icons.logout)),
-      ]),
+      appBar: AppBar(
+        leading: page == 1
+            ? IconButton(
+                tooltip: superAdmin ? 'Back to shops' : 'Back to products',
+                onPressed: () => setState(() => page = 0),
+                icon: const Icon(Icons.arrow_back_rounded),
+              )
+            : null,
+        title: Text(
+          superAdmin ? 'UET Shops • Super Admin' : 'Shop Admin Dashboard',
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: load,
+            icon: const Icon(Icons.refresh),
+          ),
+          IconButton(
+            tooltip: 'Logout',
+            onPressed: widget.onLogout,
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
       body: loading ? const Center(child: CircularProgressIndicator()) : error != null ? Center(child: Text(error!)) : pages[page],
       bottomNavigationBar: NavigationBar(
         selectedIndex: page,
